@@ -121,15 +121,6 @@ class NaukriLoginClient:
 
     def login(self):
         res = self._login_request()
-        # Debugging: check if we are being flagged as a bot
-        if "Cloudflare" in res.text or "Akamai" in res.text:
-            print("Blocked by WAF (Web Application Firewall)")
-        
-        if not res.ok:
-            print(f"Status: {res.status_code}")
-            print(f"Body: {res.text}") # Better than res.content for JSON
-            raise NaukriAuthError("Login failed")
-        # ... rest of code
 
         if not res.ok:
             print(res.content)
