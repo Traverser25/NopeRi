@@ -15,12 +15,19 @@ RETRY_MULTIPLIER   = 2.0     # exponential growth factor
 RETRY_JITTER       = 0.3     # fraction of delay added as random jitter
 
 
+# HTTP status codes that should NOT be retried (auth/client errors)
+_NO_RETRY_STATUSES = {400, 401, 403, 404, 405, 409, 422}
+
+
 def _should_retry(exc_or_response) -> bool:
     """Return True when the error / status code is worth retrying."""
     if isinstance(exc_or_response, Exception):
-        return True  # all network/IO exceptions are retried
-    # treat HTTP 429, 5xx as transient
+        # Only retry network/IO errors, not programming bugs
+        return isinstance(exc_or_response, (requests.exceptions.RequestException, OSError))
+    # treat HTTP 429, 5xx as transient; never retry auth failures
     if hasattr(exc_or_response, "status_code"):
+        if exc_or_response.status_code in _NO_RETRY_STATUSES:
+            return False
         return exc_or_response.status_code in {429, 500, 502, 503, 504}
     return False
 

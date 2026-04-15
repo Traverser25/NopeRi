@@ -7,6 +7,8 @@ from src.utils.request_helper import with_exponential_retry
 import json
 from src.utils.nkparam_generator import generate_nkparam
 from src.config.constants import RECOMMENDED_JOBS_URL,JOB_SEARCH_URL,APPLY_JOB_URL
+import time as _time
+import random as _random
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 _handler = logging.StreamHandler()
@@ -265,6 +267,15 @@ class NaukriJobClient:
 
         logger.debug("Applying to job_id=%s sid=%s", job.job_id, sid)
 
+        # Rate limit: enforce minimum gap between applies
+        now = _time.monotonic()
+        if hasattr(self, '_last_apply_time'):
+            elapsed = now - self._last_apply_time
+            min_gap = _random.uniform(8, 15)
+            if elapsed < min_gap:
+                _time.sleep(min_gap - elapsed)
+        self._last_apply_time = _time.monotonic()
+
         res = self._session.post(url, headers=headers, json=payload)
 
         if res.status_code in (401, 403):
@@ -305,10 +316,18 @@ class NaukriJobClient:
             raise NaukriParseError(f"Recommended jobs fetch failed: {res.status_code}")
 
         data = res.json()
-        raw_jobs = data.get("jobDetails") or []
-
-        print(raw_jobs[:5])
-        return [self._parse_job(j) for j in raw_jobs]
+        raw = data.get("jobDetails")
+        logger.debug("recommended jobDetails type=%s keys=%s", type(raw).__name__,
+                     list(raw.keys())[:5] if isinstance(raw, dict) else
+                     (len(raw) if isinstance(raw, list) else raw))
+        if not raw:
+            return []
+        if isinstance(raw, dict):
+            raw = list(raw.values())
+        elif not isinstance(raw, list):
+            logger.warning("Unexpected jobDetails type: %s — value: %s", type(raw).__name__, str(raw)[:200])
+            return []
+        return [self._parse_job(j) for j in raw]
 
     # ------------------------------------------------------------------
     # Search jobs
@@ -343,6 +362,15 @@ class NaukriJobClient:
             "src":              "jobsearchDesk",
             "latLong":          lat_long,
         }
+
+        # Rate limit: enforce minimum gap between searches
+        now = _time.monotonic()
+        if hasattr(self, '_last_search_time'):
+            elapsed = now - self._last_search_time
+            min_gap = _random.uniform(2, 5)
+            if elapsed < min_gap:
+                _time.sleep(min_gap - elapsed)
+        self._last_search_time = _time.monotonic()
 
         res = self._session.get(url, headers=self._search_headers(), params=params)
 
