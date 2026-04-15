@@ -4,6 +4,7 @@ from src.client.job_client import NaukriJobClient
 from dotenv import load_dotenv
 from colorama import Fore, Style, init
 import os
+import random
 load_dotenv()
 import time 
 
@@ -14,8 +15,8 @@ if __name__ == "__main__":
     # Load credentials from .env file
     # (NAUKRI_USERNAME and NAUKRI_PASSWORD must be set)
     # ---------------------------------------------------------------
-    username = os.getenv("USERNAME")
-    password = os.getenv("PASSWORD")
+    username = os.getenv("NAUKRI_USERNAME")
+    password = os.getenv("NAUKRI_PASSWORD")
 
     # ---------------------------------------------------------------
     # 1. Login — authenticates and stores session + bearer token
@@ -47,14 +48,18 @@ if __name__ == "__main__":
     # #    based on your Naukri profile
     # # ---------------------------------------------------------------
     jc = NaukriJobClient(client)
-    # jobs = jc.get_recommended_jobs()
 
-    # print("Fetching recommended jobs...")
-       
+    # Load your skills from .env
+    my_skills = [s.strip().lower() for s in os.getenv("MY_SKILLS", "").split(",") if s.strip()]
 
+    # Load already-applied job IDs
+    APPLIED_FILE = "applied_jobs.txt"
+    if os.path.exists(APPLIED_FILE):
+        with open(APPLIED_FILE, "r") as f:
+            applied_ids = set(line.strip() for line in f if line.strip())
+    else:
+        applied_ids = set()
 
-
-    
     print("Searching jobs...")    
     jobs = jc.search_jobs(keyword="Node.js developer", location="Hyderabad", experience=2)
 
@@ -70,8 +75,24 @@ if __name__ == "__main__":
             print(f"{Fore.WHITE}  Job ID  : {Fore.YELLOW}{job.job_id}")
             print(f"{Fore.WHITE}  Tags    : {Fore.YELLOW}{job.tags}")
 
-            mandatory = job.tags[:2] if job.tags else []
-            optional  = job.tags[2:] if len(job.tags) > 2 else []
+            # Skip already-applied jobs
+            if job.job_id in applied_ids:
+                print(f"{Fore.YELLOW}  ⏭ Skipped — already applied{Style.RESET_ALL}")
+                continue
+
+            # Filter: only apply if at least 1 job tag matches your skills
+            job_tags_lower = [t.lower() for t in job.tags]
+            matching = [t for t in job_tags_lower if t in my_skills]
+
+            if not matching:
+                print(f"{Fore.YELLOW}  ⏭ Skipped — no skill match{Style.RESET_ALL}")
+                continue
+
+            print(f"{Fore.GREEN}  ✓ Matched skills: {matching}{Style.RESET_ALL}")
+
+            # Only claim skills you actually have
+            mandatory = [s for s in job.tags[:2] if s.lower() in my_skills]
+            optional  = [s for s in job.tags[2:] if s.lower() in my_skills]
 
             try:
                 result = jc.apply_job(job, mandatory_skills=mandatory, optional_skills=optional, source="recommended")
@@ -84,10 +105,15 @@ if __name__ == "__main__":
 
                 print(f"{Fore.GREEN}  ✅ Applied successfully!{Style.RESET_ALL}")
 
+                # Track this job as applied
+                applied_ids.add(job.job_id)
+                with open(APPLIED_FILE, "a") as f:
+                    f.write(job.job_id + "\n")
+
             except Exception as e:
                 print(f"{Fore.RED}   Failed: {e}{Style.RESET_ALL}")
             
-            time.sleep(3)
+            time.sleep(random.uniform(8, 15))  # rate limit to avoid account flagging
 
 
 
