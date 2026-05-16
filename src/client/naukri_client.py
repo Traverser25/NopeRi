@@ -138,7 +138,11 @@ class NaukriLoginClient:
             print(res.content)
             raise NaukriAuthError("Login failed")
 
-        token = self.session.cookies.get("nauk_at")
+        token = None
+        for cookie in self.session.cookies:
+            if cookie.name == "nauk_at":
+                token = cookie.value
+
         if not token:
             raise NaukriAuthError("No token")
 
