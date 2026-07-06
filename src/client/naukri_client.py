@@ -138,7 +138,20 @@ class NaukriLoginClient:
             print(res.content)
             raise NaukriAuthError("Login failed")
 
-        token = self.session.cookies.get("nauk_at")
+        # 1. Safely find 'nauk_at' whether the list items are dicts OR object classes
+        token = None
+        for cookie in self.session.cookies:
+            # Check if it's a dictionary-like object
+            if hasattr(cookie, "get"):  
+                if cookie.get("name") == "nauk_at":
+                    token = cookie.get("value")
+                    break
+            # Check if it's a class instance (like an http.cookiejar.Cookie or similar)
+            elif hasattr(cookie, "name"):  
+                if cookie.name == "nauk_at":
+                    token = cookie.value
+                    break
+
         if not token:
             raise NaukriAuthError("No token")
 
