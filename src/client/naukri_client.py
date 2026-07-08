@@ -138,11 +138,15 @@ class NaukriLoginClient:
             print(res.content)
             raise NaukriAuthError("Login failed")
 
-        token = self.session.cookies.get("nauk_at")
-        if not token:
-            raise NaukriAuthError("No token")
+        nauk_at = None
+        for cookie in self.session.cookies:
+            if cookie.name == "nauk_at":
+                nauk_at = cookie.value
+                break
+        if nauk_at is None:
+            raise NaukriAuthError("nauk_at cookie missing")
 
-        self.naukri_session = NaukriSession(token, self.session.cookies)
+        self.naukri_session = NaukriSession(nauk_at, self.session.cookies)
 
         try:
             self.cache["form_key"] = self.get_form_key2()
