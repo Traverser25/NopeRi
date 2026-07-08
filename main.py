@@ -14,8 +14,8 @@ if __name__ == "__main__":
     # Load credentials from .env file
     # (NAUKRI_USERNAME and NAUKRI_PASSWORD must be set)
     # ---------------------------------------------------------------
-    username = os.getenv("USERNAME")
-    password = os.getenv("PASSWORD")
+    username = "viresh.ambardar98@gmail.com"
+    password = "Payalgudu@1998"
 
     # ---------------------------------------------------------------
     # 1. Login — authenticates and stores session + bearer token
@@ -46,6 +46,22 @@ if __name__ == "__main__":
     # # 5. Recommended jobs — fetches personalised job listings
     # #    based on your Naukri profile
     # # ---------------------------------------------------------------
+
+    # Job tags to skip from the job tags list
+    custom_job_tags_skip_keywords = [
+        "train",
+        "training",
+        "trainer",
+        "qa",
+        "q.a.",
+        "quality assurance",
+        "tester",
+        "testing",
+        "test engineer",
+        "intern",
+        "fresher",
+    ]
+
     jc = NaukriJobClient(client)
     # jobs = jc.get_recommended_jobs()
 
@@ -56,7 +72,7 @@ if __name__ == "__main__":
 
     
     print("Searching jobs...")    
-    jobs = jc.search_jobs(keyword="Node.js developer", location="Hyderabad", experience=2)
+    jobs = jc.search_jobs(keyword="Node.js developer", location="Hyderabad", experience=2 , skip_keywords=custom_job_tags_skip_keywords)
 
     if not jobs:
         print(f"{Fore.YELLOW}  No jobs found.{Style.RESET_ALL}")

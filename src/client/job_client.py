@@ -8,6 +8,7 @@ from src.utils.request_helper import with_exponential_retry
 from src.utils.nkparam_generator import generate_nkparam
 from src.config.constants import RECOMMENDED_JOBS_URL, JOB_SEARCH_URL, APPLY_JOB_URL
 import json
+from typing import Optional
 
 
 logger = logging.getLogger(__name__)
@@ -512,6 +513,51 @@ class NaukriJobClient:
         return [self._parse_job(j) for j in raw_jobs]
 
     # ----------------------------------------------------------------------------------
+    # Job filtering helpers (used by search_jobs)
+    # ----------------------------------------------------------------------------------
+
+    def _filter_jobs_by_skip_keywords(self, jobs: list[Job] , skip_keywords: Optional[list[str]]) -> list[Job]:
+        """
+        Filter out jobs whose tags contain any skip keywords.
+
+        Args:
+            jobs: List of Job objects to filter
+
+        Returns:
+            Filtered list of Job objects
+        """
+        # Pre-lowercase once to avoid repeated conversions inside the loop
+        skip_keywords = [kw.lower() for kw in self._skip_keywords]
+
+        filtered = []
+        for job in jobs:
+            if not job.tags:
+                filtered.append(job)
+                continue
+
+            lowered_tags = [(tag, tag.lower()) for tag in job.tags]
+
+            match = next(
+                (
+                    (tag, kw)
+                    for tag, tag_lower in lowered_tags
+                    for kw in skip_keywords
+                    if kw in tag_lower
+                ),
+                None,
+            )
+
+            if not match:
+                filtered.append(job)
+            
+       
+        logger.info(
+            f"Skipping jobs with that matches skip keywords/job tags"
+        )
+
+        return filtered
+
+    # ----------------------------------------------------------------------------------
     # Search jobs
     # ----------------------------------------------------------------------------------
 
@@ -524,6 +570,7 @@ class NaukriJobClient:
         experience:       int = 2,
         results_per_page: int = 20,
         lat_long:         str = "",
+        skip_keywords:    Optional[list[str]] = None,
     ) -> list[Job]:
 
         url     = JOB_SEARCH_URL
@@ -566,4 +613,8 @@ class NaukriJobClient:
             logger.debug("No jobs returned for keyword=%r page=%d", keyword, page)
             return []
 
-        return [self._parse_job(j) for j in raw_jobs]
+        jobs = [self._parse_job(j) for j in raw_jobs]
+        if skip_keywords is not None:
+            jobs = self._filter_jobs_by_skip_keywords(jobs,skip_keywords)
+
+        return jobs
