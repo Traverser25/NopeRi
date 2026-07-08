@@ -14,8 +14,8 @@ if __name__ == "__main__":
     # Load credentials from .env file
     # (NAUKRI_USERNAME and NAUKRI_PASSWORD must be set)
     # ---------------------------------------------------------------
-    username = "viresh.ambardar98@gmail.com"
-    password = "Payalgudu@1998"
+    username = os.getenv("USERNAME")
+    password = os.getenv("PASSWORD")
 
     # ---------------------------------------------------------------
     # 1. Login — authenticates and stores session + bearer token

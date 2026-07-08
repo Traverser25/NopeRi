@@ -527,7 +527,7 @@ class NaukriJobClient:
             Filtered list of Job objects
         """
         # Pre-lowercase once to avoid repeated conversions inside the loop
-        skip_keywords = [kw.lower() for kw in self._skip_keywords]
+        skip_keywords = [kw.lower() for kw in skip_keywords]
 
         filtered = []
         for job in jobs:
