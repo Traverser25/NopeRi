@@ -6,7 +6,7 @@ from src.client.naukri_client import NaukriLoginClient
 from src.exceptions.exceptions import NaukriAuthError, NaukriParseError
 from src.utils.request_helper import with_exponential_retry
 from src.utils.nkparam_generator import generate_nkparam
-from src.config.constants import RECOMMENDED_JOBS_URL, JOB_SEARCH_URL, APPLY_JOB_URL
+from src.config.constants import RECOMMENDED_JOBS_URL, JOB_SEARCH_URL, APPLY_JOB_URL,HISTORY_URL
 import json
 
 
@@ -282,9 +282,10 @@ class NaukriJobClient:
             raise NaukriParseError(f"Invalid JSON response: {res.text}")
 
     def is_external_apply(self, job_id: str, sid: str = "") -> bool:
-        # Returns True if the job redirects to an external company URL for apply.
         data = self.get_job_details(job_id, sid)
-        return data.get("job", {}).get("responseManager") == "companyUrl"
+
+        job = data.get("job") if isinstance(data, dict) else None
+        return isinstance(job, dict) and job.get("responseManager") == "companyUrl"
 
     # ----------------------------------------------------------------------------------
     # Apply job
