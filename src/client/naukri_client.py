@@ -16,6 +16,7 @@ _handler = logging.StreamHandler()
 _handler.setFormatter(logging.Formatter("%(asctime)s  %(levelname)-8s  %(message)s", datefmt="%H:%M:%S"))
 logger.addHandler(_handler)
 
+import os
 
 # ------------------------------------------------------------------
 # IMPORTANT — IP / HOSTING ADVICE (read before deploying)
@@ -385,7 +386,7 @@ class NaukriLoginClient:
         file_key = "U" + self.generate_file_key(13)
 
         if isinstance(file, str):
-            filename = file.split("/")[-1]
+            filename = os.path.basename(file)
             with open(file, "rb") as f:
                 file_bytes = f.read()
         else:
