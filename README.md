@@ -93,7 +93,7 @@ Naukri fingerprints IPs for every request. Many cloud providers trigger MFA or g
 **Requirements:** Python 3.10+
 
 ```bash
-git https://github.com/Traverser25/NopeRi.git
+git clone https://github.com/Traverser25/NopeRi.git
 cd Noperi
 pip install -r requirements.txt
 ```
