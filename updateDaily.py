@@ -208,6 +208,9 @@ def update_resume() -> dict:
             profile_url,
             headers={
                 "accept": "application/json",
+                "appid": "105",
+                "systemid": "Naukri",
+                "clientid": "d3skt0p",
                 "authorization": f"Bearer {token}",
                 "content-type": "application/json",
                 "origin": "https://www.naukri.com",
