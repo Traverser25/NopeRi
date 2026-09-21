@@ -325,15 +325,18 @@ class NaukriLoginClient:
             except Exception:
                 continue
 
-        try:
-            fallback_url = "https://static.naukimg.com/s/5/105/j/mnj_v299.min.js"
-            js_content = self._fetch_js(fallback_url).text
-            key = extract_form_key2(js_content)
-            if key:
-                self.cache["form_key"] = key
-                return key
-        except Exception:
-            pass
+        # Profile page no longer links the mnj bundle directly; discover its
+        # version from the app bundle's version map, then fall back to known versions.
+        from src.utils.formkey import candidate_mnj_urls
+        for mnj_js_url in candidate_mnj_urls(html, lambda u: self._fetch_js(u).text):
+            try:
+                js_content = self._fetch_js(mnj_js_url).text
+                key = extract_form_key2(js_content)
+                if key:
+                    self.cache["form_key"] = key
+                    return key
+            except Exception:
+                continue
 
         raise NaukriParseError("formKey2 not found")
 
