@@ -1,8 +1,13 @@
-requests
-urllib3
-python-dotenv
-selenium
-pycryptodome 
-colorama
-httpcloak==1.6.1
+# HTTP
 curl_cffi==0.15.0
+httpcloak==1.6.1
+
+# Crypto (RSA for nkparam signing)
+pycryptodome
+
+# CLI / output
+colorama
+python-dotenv
+
+# Scheduler (cron mode)
+apscheduler>=3.10,<4

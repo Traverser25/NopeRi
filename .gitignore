@@ -1,6 +1,22 @@
+# Research / personal notes
+learning.md
+
+# AI scoring prompt (tracked in git — edit to tune scoring behaviour)
+# user_prompt.md
+
 # Env files
 .env
 .env.*
+
+# NopeRi runtime data
+config.json
+veto.json
+applied_jobs.db
+applied_jobs.csv
+score_cache.json
+qa_cache.json
+nkparams.db
+nkPool.txt
 
 # Python cache
 __pycache__/

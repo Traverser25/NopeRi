@@ -2,7 +2,7 @@
 # permission error during session init. If you hit that, switch to
 # curl_cffi by changing the line below.
 
-USE_CURL_CFFI = False  # set True if httpcloak throws a permission error
+USE_CURL_CFFI = False # set True if httpcloak throws a permission error
 
 
 def build_session():
