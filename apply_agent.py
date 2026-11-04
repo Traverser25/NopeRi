@@ -469,15 +469,15 @@ def run_agent(cfg: ConfigManager, db: AppliedJobsDB) -> dict:
             skip_dup += 1
             continue
 
-        if jc.is_external_apply(job.job_id):
-            print(f"  {Fore.YELLOW}Status  :  Skipped — external apply (open URL manually){Style.RESET_ALL}")
-            skip_ext += 1
-            continue
-
         mandatory = job.tags[:2] if job.tags else []
         optional  = job.tags[2:] if len(job.tags) > 2 else []
 
         try:
+            if jc.is_external_apply(job.job_id):
+                print(f"  {Fore.YELLOW}Status  :  Skipped — external apply (open URL manually){Style.RESET_ALL}")
+                skip_ext += 1
+                continue
+
             result     = jc.apply_job(job, mandatory_skills=mandatory,
                                        optional_skills=optional, source="search")
             job_result = (result.get("jobs") or [{}])[0]

@@ -235,23 +235,25 @@ class NaukriJobClient:
         if not sid:
             sid = datetime.utcnow().strftime("%Y%m%d%H%M%S") + "0000000"
 
-        url = f"https://www.naukri.com/jobapi/v1/job/{job_id}"
+        url = f"https://www.naukri.com/jobapi/v4/job/{job_id}"
 
         params = {
-            "microsite": "y",
-            "src":       "jobsearchDesk",
-            "sid":       sid,
-            "xp":        "1",
-            "px":        "1",
+            "microsite":           "y",
+            "brandedConsultantJd": "true",
+            "amboxConsultantData": "true",
+            "src":                 "jobsearchDesk",
+            "sid":                 sid,
         }
 
         headers = self._client._build_headers(auth=True)
-        headers["nkparam"] = self._get_nkparam()
         headers.update({
             "appid":          "121",
             "systemid":       "Naukri",
             "clientid":       "d3skt0p",
             "accept":         "application/json",
+            "gid":            "LOCATION,INDUSTRY,EDUCATION,FAREA_ROLE",
+            # Job pages sign the job id itself; a "srp"-signed token gets 406 "recaptcha required".
+            "nkparam":        generate_nkparam(job_id),
             "referer":        "https://www.naukri.com/",
             "sec-fetch-site": "same-origin",
             "sec-fetch-mode": "cors",
@@ -273,15 +275,18 @@ class NaukriJobClient:
             raise NaukriParseError(f"Job details fetch failed: {res.status_code} — {res.text}")
 
         try:
-            return res.json()
+            data = res.json()
         except Exception:
             raise NaukriParseError(f"Invalid JSON response: {res.text}")
 
-    def is_external_apply(self, job_id: str, sid: str = "") -> bool:
-        data = self.get_job_details(job_id, sid)
+        if not isinstance(data, dict) or not isinstance(data.get("jobDetails"), dict):
+            raise NaukriParseError(f"Job details response has no jobDetails: {res.text[:200]}")
+        return data
 
-        job = data.get("job") if isinstance(data, dict) else None
-        return isinstance(job, dict) and job.get("responseManager") == "companyUrl"
+    def is_external_apply(self, job_id: str, sid: str = "") -> bool:
+        # Company-site jobs carry both URLs; Naukri-apply jobs have neither.
+        job = self.get_job_details(job_id, sid)["jobDetails"]
+        return bool(job.get("applyRedirectUrl") or job.get("companyApplyUrl"))
 
     # ----------------------------------------------------------------------------------
     # Apply job
