@@ -1,4 +1,5 @@
 import logging
+import os
 import random
 import time
 import functools
@@ -11,10 +12,6 @@ from src.utils.extractors import extract_form_key2, extract_all_js_urls
 import requests
 from src.utils.request_helper import with_exponential_retry
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
-_handler = logging.StreamHandler()
-_handler.setFormatter(logging.Formatter("%(asctime)s  %(levelname)-8s  %(message)s", datefmt="%H:%M:%S"))
-logger.addHandler(_handler)
 
 
 # ------------------------------------------------------------------
@@ -64,10 +61,10 @@ logger.addHandler(_handler)
 
 DEFAULT_HEADERS = {
     "accept": "application/json",
-    "appid": "105",
+    "appid": "103",
     "clientid": "d3skt0p",
     "content-type": "application/json",
-    "referer": "https://www.naukri.com/nlogin/login",
+    "referer": "https://www.naukri.com/",
     "systemid": "jobseeker",
     "x-requested-with": "XMLHttpRequest",
 }
@@ -107,6 +104,42 @@ class NaukriLoginClient:
         self.profile_id = None
         self.cache = {}
 
+    @classmethod
+    def from_browser_cookies(cls, nauk_at: str, nauk_rt: str = "") -> "NaukriLoginClient":
+        """
+        Build an authenticated client from browser cookies — no login request needed.
+
+        Use this when automated login is blocked by CAPTCHA. Copy cookies from
+        Chrome DevTools: F12 → Application → Cookies → https://www.naukri.com
+
+        Args:
+            nauk_at:  Value of the nauk_at cookie (access token / Bearer).
+            nauk_rt:  Value of the nauk_rt cookie (refresh token, optional).
+        """
+        client = cls.__new__(cls)
+        client.username = ""
+        client.password = ""
+        client.session = build_session()
+        client.profile_id = None
+        client.cache = {}
+
+        # httpcloak / curl_cffi both expose cookies as a plain dict
+        client.session.cookies["nauk_at"] = nauk_at
+        if nauk_rt:
+            client.session.cookies["nauk_rt"] = nauk_rt
+
+        cookies = {"nauk_at": nauk_at}
+        if nauk_rt:
+            cookies["nauk_rt"] = nauk_rt
+        client.naukri_session = NaukriSession(bearer_token=nauk_at, cookies=cookies)
+
+        try:
+            client.cache["form_key"] = client.get_form_key2()
+        except Exception:
+            pass
+
+        return client
+
     def _build_headers(self, auth=False, extra=None):
         headers = DEFAULT_HEADERS.copy()
         if auth:
@@ -125,9 +158,17 @@ class NaukriLoginClient:
     @with_exponential_retry(label="login")
     def _login_request(self):
         """Raw login HTTP call (separated so the decorator wraps only I/O)."""
+        from src.utils.vid_generator import generate_vid
+        headers = self._build_headers()
+        headers["appid"] = "105"
+        headers["systemid"] = "jobseeker"
+        try:
+            headers["vid"] = generate_vid("nlogin-login")
+        except Exception as e:
+            logger.warning("vid generation failed (%s) — sending request without vid", e)
         return self.session.post(
             LOGIN_URL,
-            headers=self._build_headers(),
+            headers=headers,
             json={"username": self.username, "password": self.password},
         )
 
@@ -325,15 +366,18 @@ class NaukriLoginClient:
             except Exception:
                 continue
 
-        try:
-            fallback_url = "https://static.naukimg.com/s/5/105/j/mnj_v299.min.js"
-            js_content = self._fetch_js(fallback_url).text
-            key = extract_form_key2(js_content)
-            if key:
-                self.cache["form_key"] = key
-                return key
-        except Exception:
-            pass
+        # Profile page no longer links the mnj bundle directly; discover its
+        # version from the app bundle's version map, then fall back to known versions.
+        from src.utils.formkey import candidate_mnj_urls
+        for mnj_js_url in candidate_mnj_urls(html, lambda u: self._fetch_js(u).text):
+            try:
+                js_content = self._fetch_js(mnj_js_url).text
+                key = extract_form_key2(js_content)
+                if key:
+                    self.cache["form_key"] = key
+                    return key
+            except Exception:
+                continue
 
         raise NaukriParseError("formKey2 not found")
 
