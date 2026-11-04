@@ -76,17 +76,12 @@ APPLY_SRC_MAP = {
 # This token is generated inside Naukri's obfuscated JS bundle and changes each
 # browser session. Without a valid token the API returns 403 Forbidden.
 #
-# Harvesting tokens:
-#   1. Run: python get_Nkparam.py
-#      Opens Chrome, captures nkparam from network logs, appends to nkPool.txt.
-#   2. Collect roughly 100 tokens for light usage, ~1000 for heavy usage.
+# nkparam tokens are harvested by opening Chrome with remote debugging enabled,
+# navigating to a Naukri search page, and capturing the header from the network
+# logs via CDP. See learning.md for the full reverse-engineering notes.
 #
-# Using the pool:
-#   self.pool = open("nkPool.txt").read().splitlines()
-#
-# Token expiry:
-#   Tokens typically last a few hours. On 403, rotate to the next token.
-#   If all tokens fail, regenerate the pool.
+# Tokens are stored in nkPool.txt (one per line) and consumed from NkparamDB
+# (nkparams.db). Tokens typically last a few hours; on 403 the pool rotates.
 #
 # Note: do not commit nkPool.txt. Add it to .gitignore.
 # ----------------------------------------------------------------------------------
@@ -104,7 +99,7 @@ APPLY_SRC_MAP = {
 
 class NaukriJobClient:
 
-    def __init__(self, login_client: NaukriLoginClient, use_pool: bool = False):
+    def __init__(self, login_client: NaukriLoginClient, use_pool: bool = False, config: dict = None):
         if not login_client.session:
             raise NaukriAuthError("Login required")
 
@@ -113,6 +108,7 @@ class NaukriJobClient:
 
         self.pool_idx = 0
         self.use_pool = use_pool
+        self._profile_config = config.get("profile", {}) if config else {}
 
         # Seed pool with one pre-captured token as a baseline fallback.
         self.pool = [
@@ -366,21 +362,23 @@ class NaukriJobClient:
         mandatory_skills=None,
         optional_skills=None,
         source="recommended",
+        precomputed_answers: dict | None = None,
     ) -> dict:
 
-        # Static profile values used when generating questionnaire answers.
-        # Update these to match the candidate's actual profile.
+        # Profile values for questionnaire answers — loaded from config.json
+        # so users never need to edit source code.
+        pc = self._profile_config
+        exp_str = str(pc.get("experience_years", 2))
         PROFILE = {
-            "current_ctc":  "5",
-            "expected_ctc": "7",
-            "exp_total":    "2",
-            "exp_node":     "2",
-            "exp_python":   "1",
-            "notice_days":  30,
-            "skills": [
-                "node", "docker", "kubernetes",
-                "aws", "ci/cd", "jenkins", "terraform",
-            ],
+            "current_ctc":  pc.get("current_ctc",  "5"),
+            "expected_ctc": pc.get("expected_ctc", "7"),
+            "exp_total":    exp_str,
+            "exp_node":     exp_str,
+            "exp_python":   exp_str,
+            "notice_days":  pc.get("notice_days",  30),
+            "skills":       [t.lower() for t in pc.get("tech_stack", [
+                "node", "docker", "kubernetes", "aws", "ci/cd", "jenkins", "terraform",
+            ])],
         }
 
         def build_smart_answers(questionnaire: list, profile: dict) -> dict:
@@ -448,7 +446,7 @@ class NaukriJobClient:
 
             return answers
 
-        answers = build_smart_answers(questionnaire, PROFILE)
+        answers = precomputed_answers if precomputed_answers else build_smart_answers(questionnaire, PROFILE)
         logger.debug("Generated answers: %s", answers)
 
         apply_src, logstr_template = APPLY_SRC_MAP.get(source, APPLY_SRC_MAP["recommended"])
