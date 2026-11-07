@@ -13,6 +13,7 @@ import requests
 from src.utils.request_helper import with_exponential_retry
 logger = logging.getLogger(__name__)
 
+import os
 
 # ------------------------------------------------------------------
 # IMPORTANT — IP / HOSTING ADVICE (read before deploying)
@@ -429,7 +430,7 @@ class NaukriLoginClient:
         file_key = "U" + self.generate_file_key(13)
 
         if isinstance(file, str):
-            filename = file.split("/")[-1]
+            filename = os.path.basename(file)
             with open(file, "rb") as f:
                 file_bytes = f.read()
         else:
