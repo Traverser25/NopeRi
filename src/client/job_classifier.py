@@ -475,12 +475,12 @@ Jobs:
     def _load_cache(self):
         if os.path.exists(self.cache_file):
             try:
-                with open(self.cache_file) as f:
+                with open(self.cache_file, encoding="utf-8") as f:
                     return json.load(f)
             except Exception:
                 return {}
         return {}
 
     def _save_cache(self):
-        with open(self.cache_file, "w") as f:
+        with open(self.cache_file, "w", encoding="utf-8") as f:
             json.dump(self.cache, f, indent=2)
