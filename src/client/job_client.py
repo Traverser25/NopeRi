@@ -140,6 +140,7 @@ class NaukriJobClient:
                 if raw.get("tagsAndSkills")
                 else []
             ),
+            company_apply=bool(raw.get("companyApplyJob")),
         )
 
     def _cluster_dates(self) -> dict:
@@ -270,6 +271,13 @@ class NaukriJobClient:
             except Exception:
                 msg = res.text
             raise NaukriAuthError(msg)
+
+        if res.status_code == 406 and "recaptcha" in res.text.lower():
+            raise NaukriAuthError(
+                "Job details asked for a reCAPTCHA (406). Naukri gates this endpoint per IP, "
+                "usually after a burst of requests or from a datacenter IP — slow down or retry later. "
+                "Use Job.company_apply from search results to avoid this call."
+            )
 
         if not res.ok:
             raise NaukriParseError(f"Job details fetch failed: {res.status_code} — {res.text}")
@@ -512,7 +520,6 @@ class NaukriJobClient:
 
         data = res.json()
         raw_jobs = data.get("jobDetails") or []
-        print(raw_jobs[:5])
         return [self._parse_job(j) for j in raw_jobs]
 
     # ----------------------------------------------------------------------------------

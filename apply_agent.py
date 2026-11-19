@@ -473,7 +473,7 @@ def run_agent(cfg: ConfigManager, db: AppliedJobsDB) -> dict:
         optional  = job.tags[2:] if len(job.tags) > 2 else []
 
         try:
-            if jc.is_external_apply(job.job_id):
+            if job.company_apply:
                 print(f"  {Fore.YELLOW}Status  :  Skipped — external apply (open URL manually){Style.RESET_ALL}")
                 skip_ext += 1
                 continue

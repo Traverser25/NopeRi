@@ -123,10 +123,16 @@ class NaukriLoginClient:
         client.profile_id = None
         client.cache = {}
 
-        # httpcloak / curl_cffi both expose cookies as a plain dict
-        client.session.cookies["nauk_at"] = nauk_at
+        # httpcloak's session.cookies returns a copy, so item assignment is silently lost.
+        def put_cookie(name, value):
+            if hasattr(client.session, "set_cookie"):
+                client.session.set_cookie(name, value, domain=".naukri.com", path="/", secure=True)
+            else:
+                client.session.cookies[name] = value
+
+        put_cookie("nauk_at", nauk_at)
         if nauk_rt:
-            client.session.cookies["nauk_rt"] = nauk_rt
+            put_cookie("nauk_rt", nauk_rt)
 
         cookies = {"nauk_at": nauk_at}
         if nauk_rt:

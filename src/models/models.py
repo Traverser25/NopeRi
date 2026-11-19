@@ -35,6 +35,7 @@ class Job:
     apply_link: str
     description: str = ""
     tags: list = field(default_factory=list)
+    company_apply: bool = False  # applying redirects to the company's own site
 
 @dataclass
 class ProfileUpdateResult:
