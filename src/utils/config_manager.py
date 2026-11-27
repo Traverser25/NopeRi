@@ -225,13 +225,19 @@ class ConfigManager:
     # ── AI provider helpers ───────────────────────────────────────────────────
 
     def get_ai_url(self) -> str:
-        if self.config["ai"].get("provider") == "openrouter":
+        provider = self.config["ai"].get("provider")
+        if provider == "openrouter":
             return "https://openrouter.ai/api/v1/chat/completions"
+        if provider in ("gemini", "google"):
+            return "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions"
         return "https://api.openai.com/v1/chat/completions"
 
     def get_ai_key(self) -> str:
-        if self.config["ai"].get("provider") == "openrouter":
+        provider = self.config["ai"].get("provider")
+        if provider == "openrouter":
             return os.getenv("OPENROUTER_API_KEY", "")
+        if provider in ("gemini", "google"):
+            return os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY", "")
         return os.getenv("OPEN_API_KEY", "")
 
     def get_ai_headers(self) -> dict:

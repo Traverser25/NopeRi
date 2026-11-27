@@ -1,6 +1,7 @@
 import json
 import os
 import re
+import time
 import requests
 
 from src.utils.config_manager import ConfigManager
@@ -321,12 +322,15 @@ class JobFilterPipeline2:
                 jid  = str(job.get("job_id") or "")
                 data = self.cache.get(jid) if jid else None
 
+                if not data and scores:
+                    item = scores.get(str(idx))
+                    if isinstance(item, dict) and isinstance(item.get("score"), int):
+                        data = item
+                        if jid:
+                            self.cache[jid] = data
+
                 if not data:
-                    data = scores.get(str(idx), {"score": 0, "reason": "no response"})
-                    if not isinstance(data.get("score"), int):
-                        data = {"score": 0, "reason": "parse error"}
-                    if jid:
-                        self.cache[jid] = data
+                    data = {"score": 0, "reason": "no response"}
 
                 job["ai_score"]  = data.get("score", 0)
                 job["ai_reason"] = data.get("reason", "")
@@ -368,76 +372,81 @@ SCORING RUBRIC — use the full range, not just 85/60:
 
 90-100 — perfect fit, apply immediately
   Primary tech is mandatory tag + backend/fullstack role
-  + exp 0-2 yrs + familiar supporting stack. Startup or product company.
+  + exp 2-5 yrs + familiar supporting stack. Startup or product company.
 
 75-89 — strong fit, apply
-  Primary tech present (mandatory or optional) + backend lean
-  + exp 0-3 yrs. Maybe one unfamiliar tag but overall good match.
+  Primary tech present (mandatory or optional) + backend/fullstack
+  + exp 2-5 yrs. Overall good match.
 
 55-74 — decent fit, apply with lower priority
-  Some stack overlap, role is fullstack but not backend-heavy,
-  or exp is 3-4 yrs, or company type unclear.
+  Some stack overlap, or role has partial tech match,
+  or company type unclear.
 
 30-54 — weak, skip unless nothing better
-  Familiar tech present but role is vague, frontend-leaning,
-  or exp mismatch 4-5 yrs.
+  Familiar tech present but role is vague or seniority mismatch.
 
 10-29 — poor match
-  Very little stack overlap, or role is clearly not backend.
+  Very little stack overlap, or role is clearly outside candidate scope.
 
 0-9 — do not apply
-  Zero stack overlap (Java+Spring only, PHP only, .NET only etc.)
+  Zero stack overlap (PHP only, .NET only, iOS/Android only)
   OR walk-in / venue / intern role.
 
 RULES:
-- If primary stack tech + 0-2yr backend → 90+, no exceptions
-- Java alongside primary tech is fine — judge the full picture
-- "Software Engineer" with primary stack tags → treat as backend, score 70-85
-- Pure React/Angular/Vue with no backend tags → 0-15
-- DevOps/infra-only with no app dev → 20-40
-- Intern roles → 0
+- If primary stack tech from candidate profile is present and mandatory → score high (80-100)
+- "Software Engineer" or general titles with candidate's primary tags → treat as strong fit
+- Unrelated tech only / zero stack overlap with candidate profile → 0-15
+- Intern or non-tech roles → 0
 - Recency: 0-1 days old → mentally add 5 points
 
 Return ONLY valid JSON, no explanation outside it:
 {{
-  "0": {{"score": 92, "reason": "Node.js + MongoDB mandatory, 0-2yr, startup backend"}},
-  "1": {{"score": 0,  "reason": "Java/Spring only, zero overlap"}}
+  "0": {{"score": 92, "reason": "primary stack mandatory, strong profile match"}},
+  "1": {{"score": 0,  "reason": "zero stack overlap, unrelated role"}}
 }}
 
 Jobs:
 {job_block}
 """
 
-        # ── API call ─────────────────────────────────────────────────────────
-        try:
-            res = requests.post(
-                self.cfg.get_ai_url(),
-                headers=self.cfg.get_ai_headers(),
-                json={
-                    "model":       self.cfg.config["ai"]["model"],
-                    "messages":    [{"role": "user", "content": prompt}],
-                    "temperature": 0.2,
-                },
-                timeout=90,
-            )
+        # ── API call with retries ─────────────────────────────────────────────
+        for attempt in range(1, 4):
+            try:
+                res = requests.post(
+                    self.cfg.get_ai_url(),
+                    headers=self.cfg.get_ai_headers(),
+                    json={
+                        "model":       self.cfg.config["ai"]["model"],
+                        "messages":    [{"role": "user", "content": prompt}],
+                        "temperature": 0.2,
+                    },
+                    timeout=45,
+                )
 
-            if res.status_code != 200:
+                if res.status_code == 200:
+                    content = res.json()["choices"][0]["message"]["content"]
+                    content = re.sub(r"```json|```", "", content).strip()
+                    match   = re.search(r"\{.*\}", content, re.S)
+                    if match:
+                        data = json.loads(match.group(0))
+                        if isinstance(data, dict):
+                            return data
+
+                if res.status_code in (429, 503):
+                    time.sleep(2 * attempt)
+                    continue
+
                 print("AI HTTP ERROR:", res.status_code, res.text[:200])
-                return {}
+                time.sleep(2)
 
-            content = res.json()["choices"][0]["message"]["content"]
-            content = re.sub(r"```json|```", "", content).strip()
-            match   = re.search(r"\{.*\}", content, re.S)
-            if not match:
-                print("AI PARSE ERROR — raw:", content[:300])
-                return {}
+            except requests.exceptions.Timeout:
+                print(f"AI timeout on attempt {attempt}/3, retrying...")
+                time.sleep(2 * attempt)
+            except Exception as e:
+                print(f"AI call error on attempt {attempt}/3:", e)
+                time.sleep(2)
 
-            data = json.loads(match.group(0))
-            return data if isinstance(data, dict) else {}
-
-        except Exception as e:
-            print("AI call error:", e)
-            return {}
+        return {}
 
     # =========================================================
     # RANK

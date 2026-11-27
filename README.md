@@ -51,6 +51,8 @@ NAUKRI_USERNAME=your_naukri_email@example.com
 PASSWORD=your_naukri_password
 
 # AI scoring + questionnaire answerer — optional
+GEMINI_API_KEY=AIzaSy...
+# or for OpenRouter:
 OPENROUTER_API_KEY=sk-or-...
 # or for OpenAI direct:
 OPEN_API_KEY=sk-...
@@ -176,10 +178,11 @@ Edit `user_prompt.md` to tune how the AI scores and filters jobs.
 
 When an API key is set, each job is scored 0–100 by the LLM before applying. Jobs below `score_threshold` (default 50) are skipped. Without a key, all fetched jobs go to the apply loop.
 
-| Provider | Env var |
-|---|---|
-| OpenRouter — recommended, access to all models | `OPENROUTER_API_KEY` |
-| OpenAI direct | `OPEN_API_KEY` |
+| Provider | Env var | Notes |
+|---|---|---|
+| Google AI Studio | `GEMINI_API_KEY` or `GOOGLE_API_KEY` | Free tier (1,500 RPD), e.g. `gemini-2.5-flash` |
+| OpenRouter | `OPENROUTER_API_KEY` | Recommended, access to all models |
+| OpenAI direct | `OPEN_API_KEY` | GPT-4o / mini |
 
 ## 🧠 AI Questionnaire Answerer
 
