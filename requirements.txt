@@ -1,6 +1,10 @@
-# HTTP
+# HTTP & Network
 curl_cffi==0.15.0
 httpcloak==1.6.1
+requests>=2.28.0
+
+# Document processing
+python-docx>=1.0.0
 
 # Crypto (RSA for nkparam signing)
 pycryptodome
