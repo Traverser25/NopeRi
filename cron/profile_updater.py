@@ -54,7 +54,7 @@ def run_profile_update(cfg: ConfigManager | None = None) -> bool:
     config  = cfg.config
     profile = config.get("profile", {})
 
-    username    = os.getenv("USERNAME", "")
+    username    = os.getenv("NAUKRI_USERNAME") or os.getenv("USERNAME", "")
     password    = os.getenv("PASSWORD", "")
     resume_path = profile.get("resume_path", "").strip()
 
@@ -76,8 +76,19 @@ def run_profile_update(cfg: ConfigManager | None = None) -> bool:
         # Resume upload (only if path is configured and file exists)
         if resume_path:
             if os.path.exists(resume_path):
-                client.update_resume(resume_path)
-                logger.info("Resume uploaded: %s", resume_path)
+                import re, shutil
+                from datetime import datetime
+
+                base, ext = os.path.splitext(os.path.basename(resume_path))
+                # Strip existing date pattern to avoid chaining dates on recurring runs
+                base_clean = re.sub(r'_\d{1,2}_[A-Za-z]{3}_\d{4}$|_\d{4}[-_]\d{2}[-_]\d{2}$', '', base)
+                date_str = datetime.now().strftime("%d_%b_%Y")
+                dated_filename = f"{base_clean}_{date_str}{ext}"
+                dated_path = os.path.join(os.path.dirname(resume_path), dated_filename)
+
+                shutil.copy2(resume_path, dated_path)
+                client.update_resume(dated_path)
+                logger.info("Resume uploaded with fresh date: %s", dated_filename)
             else:
                 logger.warning("Resume path not found: %s", resume_path)
 
