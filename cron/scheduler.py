@@ -206,6 +206,20 @@ def main() -> None:
     if tg_on:
         alert_scheduler_started(job_names)
 
+    # Start web dashboard & setup wizard on 0.0.0.0:8765
+    try:
+        import threading
+        from src.utils.dashboard_server import start_dashboard_server
+        web_thread = threading.Thread(
+            target=start_dashboard_server,
+            kwargs={"host": "0.0.0.0", "port": 8765},
+            daemon=True
+        )
+        web_thread.start()
+        logger.info("Dashboard & Setup web UI started on http://0.0.0.0:8765")
+    except Exception as e:
+        logger.warning("Could not start dashboard web server: %s", e)
+
     try:
         sched.start()
     except (KeyboardInterrupt, SystemExit):

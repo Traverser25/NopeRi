@@ -833,7 +833,7 @@ input[type=range] { flex: 1; accent-color: var(--accent); height: 4px }
 </section>
 
 <script>
-const API = 'http://localhost:8765';
+const API = window.location.origin;
 
 let step          = 1;
 let accountDone   = false;
@@ -842,6 +842,10 @@ let storedSession = {};
 let serverEnv     = {};    // from /api/config _env block
 
 const MODELS = {
+  gemini: [
+    {v:'gemini-2.5-flash',                      l:'gemini-2.5-flash — fast + free tier'},
+    {v:'gemini-3.8-flash',                      l:'gemini-3.8-flash — latest'},
+  ],
   openrouter: [
     {v:'anthropic/claude-3.5-haiku',            l:'claude-3.5-haiku — fast + cheap'},
     {v:'anthropic/claude-3.5-sonnet',           l:'claude-3.5-sonnet — balanced'},
