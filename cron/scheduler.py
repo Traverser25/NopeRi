@@ -174,9 +174,10 @@ def _print_banner(sched: BlockingScheduler, job_names: list[str]) -> None:
     print(f"  {Fore.CYAN}{Style.BRIGHT}NopeRi Scheduler{Style.RESET_ALL}")
     print(f"{Fore.CYAN}{'─'*60}{Style.RESET_ALL}")
     for job in sched.get_jobs():
+        nxt = getattr(job, "next_run_time", None) or "on scheduler start"
         print(
             f"  {Fore.WHITE}●{Style.RESET_ALL}  {job.name or job.id}"
-            f"  {Fore.CYAN}next: {job.next_run_time}{Style.RESET_ALL}"
+            f"  {Fore.CYAN}next: {nxt}{Style.RESET_ALL}"
         )
     print(f"\n  {Fore.WHITE}Ctrl+C to stop.{Style.RESET_ALL}\n")
 
