@@ -18,7 +18,7 @@ Config (edit config.json or run  python apply_agent.py --setup):
   cron.apply.timezone                "Asia/Kolkata"
 
 Environment (.env):
-  USERNAME, PASSWORD
+  NAUKRI_USERNAME (or NUSERNAME), PASSWORD
   OPEN_API_KEY  or  OPENROUTER_API_KEY
   TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID   (optional)
   RESUME_PATH                            (optional — also settable in config.json)

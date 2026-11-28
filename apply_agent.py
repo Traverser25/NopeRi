@@ -404,11 +404,11 @@ def run_agent(cfg: ConfigManager, db: AppliedJobsDB) -> dict:
         client = NaukriLoginClient.from_browser_cookies(nauk_at, session.get("nauk_rt",""))
         print(f"  {Fore.GREEN}Resumed session from stored cookies{Style.RESET_ALL}")
     else:
-        username = os.getenv("NAUKRI_USERNAME", "")
+        username = os.getenv("NAUKRI_USERNAME") or os.getenv("NUSERNAME", "")
         password = os.getenv("PASSWORD", "")
         if not username or not password:
             print(f"  {Fore.RED}No credentials found.{Style.RESET_ALL}")
-            print(f"  Add NAUKRI_USERNAME and PASSWORD to .env, or run --setup.")
+            print(f"  Add NAUKRI_USERNAME (or NUSERNAME) and PASSWORD to .env, or run --setup.")
             sys.exit(1)
         client = NaukriLoginClient(username, password)
         client.login()

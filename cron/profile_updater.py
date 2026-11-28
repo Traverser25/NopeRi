@@ -63,11 +63,11 @@ def run_profile_update(cfg: ConfigManager | None = None) -> bool:
             client = NaukriLoginClient.from_browser_cookies(nauk_at, session.get("nauk_rt", ""))
             logger.info("Profile updater: resumed session from stored cookies")
         else:
-            username = os.getenv("NAUKRI_USERNAME") or os.getenv("USERNAME", "")
+            username = os.getenv("NAUKRI_USERNAME") or os.getenv("NUSERNAME", "")
             password = os.getenv("PASSWORD", "")
 
             if not username or not password:
-                logger.error("NAUKRI_USERNAME or PASSWORD not set in environment")
+                logger.error("NAUKRI_USERNAME (or NUSERNAME) or PASSWORD not set in environment")
                 alert_error("Profile updater: credentials missing")
                 return False
 

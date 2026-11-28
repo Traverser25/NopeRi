@@ -1452,7 +1452,7 @@ class _Handler(BaseHTTPRequestHandler):
         has_or  = bool(os.getenv('OPENROUTER_API_KEY'))
         has_oai = bool(os.getenv('OPEN_API_KEY'))
         data['_env'] = {
-            'has_credentials': bool(os.getenv('NAUKRI_USERNAME')) and bool(os.getenv('PASSWORD')),
+            'has_credentials': bool(os.getenv('NAUKRI_USERNAME') or os.getenv('NUSERNAME')) and bool(os.getenv('PASSWORD')),
             'has_ai_key':      has_or or has_oai,
             'ai_key_provider': 'openrouter' if has_or else ('openai' if has_oai else ''),
             'cwd':             str(Path.cwd()),
