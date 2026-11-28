@@ -34,6 +34,8 @@ logger = logging.getLogger(__name__)
 
 def _build_headline(profile: dict) -> str:
     """Generate a headline string from config profile values."""
+    if custom := (profile.get("resume_headline") or profile.get("headline")):
+        return custom.strip()
     role  = profile.get("role_focus", "backend").title()
     exp   = profile.get("experience_years", 2)
     stack = profile.get("tech_stack", [])
@@ -95,22 +97,27 @@ def run_profile_update(cfg: ConfigManager | None = None) -> bool:
 
         # Resume upload (only if path is configured and file exists)
         if resume_path:
-            if os.path.exists(resume_path):
+            resolved_resume_path = (
+                resume_path
+                if os.path.isabs(resume_path)
+                else str(Path(__file__).parent.parent / resume_path)
+            )
+            if os.path.exists(resolved_resume_path):
                 import re, shutil
                 from datetime import datetime
 
-                base, ext = os.path.splitext(os.path.basename(resume_path))
+                base, ext = os.path.splitext(os.path.basename(resolved_resume_path))
                 # Strip existing date pattern to avoid chaining dates on recurring runs
                 base_clean = re.sub(r'_\d{1,2}_[A-Za-z]{3}_\d{4}$|_\d{4}[-_]\d{2}[-_]\d{2}$', '', base)
                 date_str = datetime.now().strftime("%d_%b_%Y")
                 dated_filename = f"{base_clean}_{date_str}{ext}"
-                dated_path = os.path.join(os.path.dirname(resume_path), dated_filename)
+                dated_path = os.path.join(os.path.dirname(resolved_resume_path), dated_filename)
 
-                shutil.copy2(resume_path, dated_path)
+                shutil.copy2(resolved_resume_path, dated_path)
                 client.update_resume(dated_path)
                 logger.info("Resume uploaded with fresh date: %s", dated_filename)
             else:
-                logger.warning("Resume path not found: %s", resume_path)
+                logger.warning("Resume path not found: %s", resolved_resume_path)
 
         tg_cfg = config.get("telegram", {})
         if tg_cfg.get("enabled"):
