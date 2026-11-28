@@ -1,0 +1,24 @@
+services:
+  naukri-bot:
+    build: .
+    container_name: naukri-bot
+    restart: unless-stopped
+    volumes:
+      - ./.env:/app/.env:ro
+      - ./config.json:/app/config.json
+      - ./veto.json:/app/veto.json
+      - ./applied_jobs.db:/app/applied_jobs.db
+      - ./applied_jobs.csv:/app/applied_jobs.csv
+      - ./score_cache.json:/app/score_cache.json
+      - ./qa_cache.json:/app/qa_cache.json
+      - /home/ani/Documents/Resume:/home/ani/Documents/Resume
+    environment:
+      - PYTHONUNBUFFERED=1
+    networks:
+      - default
+      - proxy
+
+networks:
+  default:
+  proxy:
+    external: true

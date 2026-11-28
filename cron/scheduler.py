@@ -18,7 +18,7 @@ Config (edit config.json or run  python apply_agent.py --setup):
   cron.apply.timezone                "Asia/Kolkata"
 
 Environment (.env):
-  USERNAME, PASSWORD
+  NAUKRI_USERNAME (or NUSERNAME), PASSWORD
   OPEN_API_KEY  or  OPENROUTER_API_KEY
   TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID   (optional)
   RESUME_PATH                            (optional — also settable in config.json)
@@ -174,9 +174,10 @@ def _print_banner(sched: BlockingScheduler, job_names: list[str]) -> None:
     print(f"  {Fore.CYAN}{Style.BRIGHT}NopeRi Scheduler{Style.RESET_ALL}")
     print(f"{Fore.CYAN}{'─'*60}{Style.RESET_ALL}")
     for job in sched.get_jobs():
+        nxt = getattr(job, "next_run_time", None) or "on scheduler start"
         print(
             f"  {Fore.WHITE}●{Style.RESET_ALL}  {job.name or job.id}"
-            f"  {Fore.CYAN}next: {job.next_run_time}{Style.RESET_ALL}"
+            f"  {Fore.CYAN}next: {nxt}{Style.RESET_ALL}"
         )
     print(f"\n  {Fore.WHITE}Ctrl+C to stop.{Style.RESET_ALL}\n")
 
@@ -204,6 +205,20 @@ def main() -> None:
     tg_on = config.get("telegram", {}).get("enabled", False)
     if tg_on:
         alert_scheduler_started(job_names)
+
+    # Start web dashboard & setup wizard on 0.0.0.0:8765
+    try:
+        import threading
+        from src.utils.dashboard_server import start_dashboard_server
+        web_thread = threading.Thread(
+            target=start_dashboard_server,
+            kwargs={"host": "0.0.0.0", "port": 8765},
+            daemon=True
+        )
+        web_thread.start()
+        logger.info("Dashboard & Setup web UI started on http://0.0.0.0:8765")
+    except Exception as e:
+        logger.warning("Could not start dashboard web server: %s", e)
 
     try:
         sched.start()

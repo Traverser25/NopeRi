@@ -2,8 +2,8 @@
 main.py -- NopeRi API demo / sandbox
 
 Uncomment whichever section you want to try.
-Credentials are read from .env (NAUKRI_USERNAME, PASSWORD).
-
+Credentials are read from .env (NAUKRI_USERNAME or NUSERNAME, PASSWORD).
+...
 This file is NOT the production runner -- use apply_agent.py for that.
 """
 
@@ -24,7 +24,7 @@ if __name__ == "__main__":
 
     # -- 1. Login ----------------------------------------------------------
     # Authenticates and stores session + bearer token.
-    username = os.getenv("NAUKRI_USERNAME", "")
+    username = os.getenv("NAUKRI_USERNAME") or os.getenv("NUSERNAME", "")
     password = os.getenv("PASSWORD", "")
 
     client = NaukriLoginClient(username, password)
