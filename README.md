@@ -218,38 +218,83 @@ Every successful application is recorded in:
 
 Both persist across runs and are gitignored. Use `--list-applied` to view history and `--remove-job <HASH>` to allow re-applying to a specific job.
 
-## 📊 Dashboard
+## 📊 Live Web Dashboard & UI
+
+NopeRi includes an embedded web server running on port `8765` alongside the scheduler daemon.
 
 ```bash
-python apply_agent.py --dashboard
+# When running via Docker or cron/scheduler.py, the web UI is live at:
+http://localhost:8765/          # Live Dashboard
+http://localhost:8765/setup     # Interactive Setup Wizard
 ```
 
-Opens an HTML page in your browser showing:
-- Stat cards — total applied, score tiers (≥70 / 50–69 / <50 / no score)
-- Bar chart — applications per day (last 30 days)
-- Horizontal bar — top 8 companies applied to
-- Recent applications table with colour-coded score pills
+* **Live Dashboard (`/`):** Real-time stats (Total Applied, Score tiers ≥70 / 50–69 / <50), applications per day chart, top companies bar chart, recent applications table with AI fit scores, and instant manual action buttons (**"🔄 Bump Profile Now"** & **"🚀 Run Apply Agent Now"**).
+* **Setup Wizard (`/setup`):** Update search queries, role preferences, or AI API keys directly from your browser.
+* **CLI fallback:** `python apply_agent.py --dashboard` opens the static HTML report.
 
-## ⏰ Scheduled Runs (Ubuntu / Linux)
+## 🐳 Docker Setup (Recommended for Servers & Oracle ARM)
 
-The setup wizard (Step 4 → Automate) generates the exact crontab line and can install it in one click. Or do it manually:
+NopeRi includes full Docker & Docker Compose support with Node.js built-in for Naukri BotGuard token (`vid`) generation.
 
 ```bash
-# example: run at 08:00 Mon–Fri, append to log
-0 8 * * 1-5 cd /path/to/NopeRi && python3 apply_agent.py >> /path/to/NopeRi/noperi.log 2>&1
+# 1. Build and run in background (auto-restarts on server reboot)
+docker compose up -d --build
+
+# 2. View live logs
+docker logs -f naukri-bot
+
+# 3. Stop or restart
+docker compose stop
+docker compose restart
 ```
 
-```bash
-crontab -e   # paste the line, save
-crontab -l   # verify
+### Reverse Proxy with Nginx (Custom Domain / SSL)
+If using Nginx (e.g. with Cloudflare or Let's Encrypt), connect the container to your proxy network and add a server block:
+
+```nginx
+server {
+    listen 80;
+    listen 443 ssl;
+    server_name naukri.yourdomain.com;
+
+    ssl_certificate     /etc/nginx/ssl/fullchain.pem;
+    ssl_certificate_key /etc/nginx/ssl/privkey.pem;
+
+    location / {
+        proxy_pass http://naukri-bot:8765;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
 ```
 
-> **Windows:** crontab is not supported. Run `python apply_agent.py` manually or configure Task Scheduler yourself.
+## ⏰ Scheduled Runs (Linux / VPS)
 
-For profile headline / resume refresh on a separate schedule, `cron/scheduler.py` (APScheduler) is still available:
+### Option A: Built-in Daemon / Docker (Recommended)
+`cron/scheduler.py` runs two tasks automatically:
+1. **Profile Updater:** Bumps headline and uploads date-stamped CV every **6 hours**.
+2. **Apply Agent:** Searches, AI scores, and applies once daily at **08:00 AM IST** (Mon–Sun).
 
 ```bash
+# Run directly with Python:
 python cron/scheduler.py
+
+# Or 1-command systemd installer on Ubuntu/Debian/Arch:
+./setup_server.sh
+```
+
+### Option B: Linux Crontab (0 MB Idle RAM)
+To wake up Python only when needed instead of keeping a daemon running:
+
+```cron
+# Profile update & date-stamped CV upload every 6 hours
+0 */6 * * * cd /path/to/Naukri-Automate && ./venv/bin/python cron/profile_updater.py >> updater.log 2>&1
+
+# Apply agent once daily at 08:00 AM (Mon-Fri)
+0 8 * * 1-5 cd /path/to/Naukri-Automate && ./venv/bin/python apply_agent.py >> agent.log 2>&1
 ```
 
 ## 🔔 Telegram Alerts
