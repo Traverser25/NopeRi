@@ -45,6 +45,30 @@ def _build_headline(profile: dict) -> str:
     return f"{role} Engineer | {exp}+ YOE | {stack_short}"
 
 
+def _find_resume(configured_path: str) -> str | None:
+    """Resolve configured resume path, falling back to newest CV in resumes/ folder."""
+    import glob, re
+    project_root = Path(__file__).parent.parent
+    if configured_path:
+        p = configured_path if os.path.isabs(configured_path) else str(project_root / configured_path)
+        if os.path.isfile(p):
+            return p
+
+    # Fallback: look in resumes/ for the latest non-generated resume
+    resumes_dir = str(project_root / "resumes")
+    if os.path.isdir(resumes_dir):
+        candidates = []
+        for f in glob.glob(os.path.join(resumes_dir, "*")):
+            if f.lower().endswith((".pdf", ".docx")):
+                base = os.path.basename(f)
+                if not re.search(r'_\d{1,2}_[A-Za-z]{3}_\d{4}\.(pdf|docx)$|_\d{4}[-_]\d{2}[-_]\d{2}\.(pdf|docx)$', base, re.I):
+                    candidates.append(f)
+        if candidates:
+            candidates.sort(key=os.path.getmtime, reverse=True)
+            return candidates[0]
+    return None
+
+
 def run_profile_update(cfg: ConfigManager | None = None) -> bool:
     """
     Login, update the profile headline, and optionally upload a resume.
@@ -96,28 +120,23 @@ def run_profile_update(cfg: ConfigManager | None = None) -> bool:
         logger.info("Headline updated: %s", headline)
 
         # Resume upload (only if path is configured and file exists)
-        if resume_path:
-            resolved_resume_path = (
-                resume_path
-                if os.path.isabs(resume_path)
-                else str(Path(__file__).parent.parent / resume_path)
-            )
-            if os.path.exists(resolved_resume_path):
-                import re, shutil
-                from datetime import datetime
+        resolved_resume_path = _find_resume(resume_path)
+        if resolved_resume_path:
+            import re, shutil
+            from datetime import datetime
 
-                base, ext = os.path.splitext(os.path.basename(resolved_resume_path))
-                # Strip existing date pattern to avoid chaining dates on recurring runs
-                base_clean = re.sub(r'_\d{1,2}_[A-Za-z]{3}_\d{4}$|_\d{4}[-_]\d{2}[-_]\d{2}$', '', base)
-                date_str = datetime.now().strftime("%d_%b_%Y")
-                dated_filename = f"{base_clean}_{date_str}{ext}"
-                dated_path = os.path.join(os.path.dirname(resolved_resume_path), dated_filename)
+            base, ext = os.path.splitext(os.path.basename(resolved_resume_path))
+            # Strip existing date pattern to avoid chaining dates on recurring runs
+            base_clean = re.sub(r'_\d{1,2}_[A-Za-z]{3}_\d{4}$|_\d{4}[-_]\d{2}[-_]\d{2}$', '', base)
+            date_str = datetime.now().strftime("%d_%b_%Y")
+            dated_filename = f"{base_clean}_{date_str}{ext}"
+            dated_path = os.path.join(os.path.dirname(resolved_resume_path), dated_filename)
 
-                shutil.copy2(resolved_resume_path, dated_path)
-                client.update_resume(dated_path)
-                logger.info("Resume uploaded with fresh date: %s", dated_filename)
-            else:
-                logger.warning("Resume path not found: %s", resolved_resume_path)
+            shutil.copy2(resolved_resume_path, dated_path)
+            client.update_resume(dated_path)
+            logger.info("Resume uploaded with fresh date: %s (source: %s)", dated_filename, os.path.basename(resolved_resume_path))
+        elif resume_path:
+            logger.warning("Resume file not found: %s and no valid CV in resumes/", resume_path)
 
         tg_cfg = config.get("telegram", {})
         if tg_cfg.get("enabled"):

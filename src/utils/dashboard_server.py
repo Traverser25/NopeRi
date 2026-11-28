@@ -19,6 +19,7 @@ import logging
 import os
 import sqlite3
 import threading
+import urllib.parse
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any
@@ -126,6 +127,9 @@ tr:last-child td{{border-bottom:none}}
 <div class="top-nav">
   <div class="logo">Nope<em>Ri</em> &mdash; Automation Dashboard</div>
   <div class="nav-actions">
+    <input type="file" id="cvInput" accept=".pdf,.docx" style="display:none" onchange="uploadCV(this)">
+    <button class="btn" onclick="document.getElementById('cvInput').click()">📄 Upload CV</button>
+    <button class="btn" onclick="triggerAction('/api/reload-config', 'Config & Schedules Reloaded!')">⚡ Reload Config</button>
     <button class="btn" onclick="triggerAction('/api/trigger-profile-update', 'CV & Headline Update Triggered!')">🔄 Bump Profile Now</button>
     <button class="btn btn-primary" onclick="triggerAction('/api/trigger-apply', 'Apply Agent Triggered in Background!')">🚀 Run Apply Agent Now</button>
     <a href="/setup" class="btn">⚙️ Settings</a>
@@ -187,9 +191,37 @@ function showToast(text) {{
   t.style.display = 'block';
   setTimeout(()=>{{t.style.display='none'}}, 4000);
 }}
+
+function uploadCV(input) {{
+  const file = input.files[0];
+  if (!file) return;
+  showToast('Uploading ' + file.name + '...');
+  const reader = new FileReader();
+  reader.onload = function(e) {{
+    fetch('/api/upload-resume?filename=' + encodeURIComponent(file.name), {{
+      method: 'POST',
+      headers: {{'Content-Type': 'application/octet-stream'}},
+      body: e.target.result
+    }})
+    .then(r => r.json())
+    .then(data => {{
+      if (data.ok) {{
+        showToast(data.message || 'CV updated!');
+        setTimeout(() => location.reload(), 2000);
+      }} else {{
+        showToast('Error: ' + (data.error || 'Upload failed'));
+      }}
+    }})
+    .catch(err => showToast('Upload error: ' + err));
+  }};
+  reader.readAsArrayBuffer(file);
+}}
 </script>
 </body>
 </html>"""
+
+
+_RUNNING_SCHEDULER: Any = None
 
 
 class DashboardHandler(_SetupBaseHandler):
@@ -216,8 +248,77 @@ class DashboardHandler(_SetupBaseHandler):
         elif clean_path == "/api/trigger-apply":
             threading.Thread(target=self._run_apply_agent, daemon=True).start()
             self._json({"ok": True, "message": "Apply agent triggered in background."})
+        elif clean_path == "/api/reload-config":
+            self._reload_config()
+        elif clean_path == "/api/upload-resume":
+            self._upload_resume()
+        elif clean_path == "/api/save":
+            self._save_and_sync()
         else:
             super().do_POST()
+
+    def _reload_config(self):
+        try:
+            from src.utils.config_manager import ConfigManager
+            cfg = ConfigManager()
+            labels = []
+            if _RUNNING_SCHEDULER is not None:
+                from cron.scheduler import sync_scheduler_jobs
+                labels = sync_scheduler_jobs(_RUNNING_SCHEDULER, cfg.config)
+            self._json({"ok": True, "message": "Configuration reloaded on the fly.", "jobs": labels})
+        except Exception as e:
+            self._json({"ok": False, "error": str(e)})
+
+    def _save_and_sync(self):
+        body = self._body()
+        self._save(body)
+        if _RUNNING_SCHEDULER is not None:
+            try:
+                from src.utils.config_manager import ConfigManager
+                from cron.scheduler import sync_scheduler_jobs
+                cfg = ConfigManager()
+                sync_scheduler_jobs(_RUNNING_SCHEDULER, cfg.config)
+                logger.info("Scheduler dynamically synced following web settings save.")
+            except Exception as e:
+                logger.warning("Could not sync scheduler on save: %s", e)
+
+    def _upload_resume(self):
+        try:
+            length = int(self.headers.get("content-length", 0))
+            if length == 0:
+                self._json({"ok": False, "error": "Empty file"}, 400)
+                return
+            query = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
+            raw_filename = query.get("filename", ["resume.docx"])[0]
+            filename = os.path.basename(raw_filename)
+            if not filename.lower().endswith((".pdf", ".docx")):
+                self._json({"ok": False, "error": "Only .pdf and .docx files are allowed."}, 400)
+                return
+
+            resumes_dir = Path("resumes")
+            resumes_dir.mkdir(exist_ok=True)
+            dest = resumes_dir / filename
+            content = self.rfile.read(length)
+            with open(dest, "wb") as f:
+                f.write(content)
+
+            from src.utils.config_manager import ConfigManager
+            cfg = ConfigManager()
+            data = cfg.load()
+            data.setdefault("profile", {})["resume_path"] = f"resumes/{filename}"
+            cfg.save(data)
+            logger.info("New CV uploaded on the fly: %s (saved to %s)", filename, dest)
+
+            # Trigger background profile update so Naukri gets the fresh CV immediately
+            threading.Thread(target=self._run_profile_updater, daemon=True).start()
+            self._json({
+                "ok": True,
+                "message": f"Uploaded {filename}! Profile & CV update triggered.",
+                "resume_path": f"resumes/{filename}"
+            })
+        except Exception as e:
+            logger.error("CV upload failed: %s", e)
+            self._json({"ok": False, "error": str(e)}, 500)
 
     def _get_stats(self):
         from src.utils.dbhandler import AppliedJobsDB
@@ -247,8 +348,10 @@ class DashboardHandler(_SetupBaseHandler):
             logger.error("Web-triggered apply agent error: %s", e)
 
 
-def start_dashboard_server(host: str = "0.0.0.0", port: int = 8765) -> None:
+def start_dashboard_server(host: str = "0.0.0.0", port: int = 8765, scheduler: Any = None) -> None:
     """Start the dashboard HTTP server."""
+    global _RUNNING_SCHEDULER
+    _RUNNING_SCHEDULER = scheduler
     server = ThreadingHTTPServer((host, port), DashboardHandler)
     logger.info("Web dashboard server running at http://%s:%d", host, port)
     server.serve_forever()
