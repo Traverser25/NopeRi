@@ -833,7 +833,7 @@ input[type=range] { flex: 1; accent-color: var(--accent); height: 4px }
 </section>
 
 <script>
-const API = 'http://localhost:8765';
+const API = window.location.origin;
 
 let step          = 1;
 let accountDone   = false;
@@ -842,6 +842,10 @@ let storedSession = {};
 let serverEnv     = {};    // from /api/config _env block
 
 const MODELS = {
+  gemini: [
+    {v:'gemini-2.5-flash',                      l:'gemini-2.5-flash — fast + free tier'},
+    {v:'gemini-3.8-flash',                      l:'gemini-3.8-flash — latest'},
+  ],
   openrouter: [
     {v:'anthropic/claude-3.5-haiku',            l:'claude-3.5-haiku — fast + cheap'},
     {v:'anthropic/claude-3.5-sonnet',           l:'claude-3.5-sonnet — balanced'},
@@ -1448,7 +1452,7 @@ class _Handler(BaseHTTPRequestHandler):
         has_or  = bool(os.getenv('OPENROUTER_API_KEY'))
         has_oai = bool(os.getenv('OPEN_API_KEY'))
         data['_env'] = {
-            'has_credentials': bool(os.getenv('NAUKRI_USERNAME')) and bool(os.getenv('PASSWORD')),
+            'has_credentials': bool(os.getenv('NAUKRI_USERNAME') or os.getenv('NUSERNAME')) and bool(os.getenv('PASSWORD')),
             'has_ai_key':      has_or or has_oai,
             'ai_key_provider': 'openrouter' if has_or else ('openai' if has_oai else ''),
             'cwd':             str(Path.cwd()),

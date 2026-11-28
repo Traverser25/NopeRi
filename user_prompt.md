@@ -1,15 +1,14 @@
 ## Candidate Profile
 
-- **Role:** Backend / Fullstack-Backend Developer
-- **Experience:** 2 years, backend-focused
-- **Primary stack:** Node.js, Python, MongoDB, REST APIs, AWS
-- **Secondary stack:** Docker, CI/CD, FastAPI, Flask, Express, Playwright, Selenium,
-  web scraping, n8n, LangChain, RAG, vector DBs
-- **Looking for:** SDE1 or junior-to-mid backend / fullstack-backend roles
-- **Preferred companies:** startups, early-stage product companies, AI/automation teams
-- **Work mode:** remote or hybrid preferred; open to on-site in Bangalore or Hyderabad
-- **Will NOT do:** pure frontend, mobile (Android/iOS/Flutter), ML research,
-  data science, DevOps-only, QA/testing roles
+- **Role:** Full Stack Developer / Java Backend Engineer
+- **Experience:** 4 years
+- **Primary stack:** Java (8/11/17), Spring Boot, Microservices, Spring Data JPA, Hibernate, Spring Security, Angular, TypeScript, Node.js, REST APIs, MySQL, PostgreSQL, Docker, Redis, AWS
+- **Secondary stack:** React, Next.js, Flask, CI/CD (Jenkins), Shell, Linux, Strapi
+- **Certifications:** AWS Certified Developer Associate, AWS Certified AI Practitioner, Azure AZ-900, Google Cloud Gen AI
+- **Looking for:** Full Stack Engineer (Java + Angular/React), Java Backend Developer, SDE-2 / Mid-level Engineer
+- **Preferred companies:** Product companies, tech startups, high-growth engineering teams
+- **Work mode:** Remote, hybrid, or on-site (Bangalore, Hyderabad, Pune, Kolkata, Gurgaon, Noida)
+- **Will NOT do:** Pure frontend (unless strong React/Angular architecture), mobile app only (iOS/Android), QA/manual testing, pure DevOps/IT support
 
 ---
 
@@ -19,29 +18,31 @@ Score each job 0–100 based on fit. Use these anchors:
 
 | Score | Meaning |
 |-------|---------|
-| 85–100 | Strong match — Node.js or Python is the primary requirement, backend-heavy, startup or product company, 0–3 yrs exp |
-| 65–84  | Good match — backend role with relevant stack, may include some frontend duties |
-| 40–64  | Weak match — partial stack overlap, role is vague, or company is a large IT services firm |
-| 0–39   | Poor match — pure frontend, mobile, ML/DS, DevOps-only, or mismatched seniority |
+| 85–100 | Strong match — Java (8/11/17) / Spring Boot Microservices with Angular/TypeScript or React; backend/fullstack focus, 2–5 yrs exp |
+| 65–84  | Good match — Core Java/Spring Boot backend role, or Full Stack role with matching stack |
+| 40–64  | Weak match — Heavy emphasis on unfamiliar stacks, or vague JD, or IT services body shop |
+| 0–39   | Poor match — QA, manual testing, pure mobile, DevOps-only, or mismatched seniority (8+ yrs) |
 
 ### Boost (+10–15 points)
-- Node.js or Python listed as mandatory skill
-- Startup / product company (not IT services)
-- Remote or hybrid work mode
-- AI, automation, or scraping in the job description
+- Java (8/11/17) and Spring Boot listed as primary/mandatory
+- Microservices, Spring Data JPA, or Hibernate mentioned
+- Full stack with Angular/TypeScript or React + Java backend
+- AWS, Docker, or Redis mentioned
+- Product company / engineering-first culture
+- Remote or hybrid work option
 
 ### Penalise (-10–20 points)
-- React / Angular / Vue listed as the primary skill
-- Large IT outsourcing firm (Infosys, TCS, Wipro, Accenture, Cognizant, etc.)
-- Requires 4+ years of experience
-- Primarily DevOps, cloud infra, or QA role
+- Requires 6+ years of experience
+- Pure manual testing / QA / support role
+- Large body-shop mass recruitment
+- Unrelated primary stack (e.g. .NET/C#, PHP, Ruby on Rails)
 
 ---
 
 ## Notes for the AI
 
-- Treat "Full Stack" roles as valid if the backend side is Node.js or Python.
-- A job that lists both frontend and backend equally scores in the 50–65 range.
-- Ignore salary information — do not factor CTC into the score.
-- If the job description is missing or very short, score conservatively (40–55).
+- Treat "Full Stack Developer" as a high match if backend is Java or Node.js.
+- A role with Java + Angular/React is the ideal target fit.
+- Ignore salary / CTC information — do not factor CTC into scoring.
+- If the job description is short, score moderately (45–60) if core skills match.
 - Always return a brief one-line reason with the score.

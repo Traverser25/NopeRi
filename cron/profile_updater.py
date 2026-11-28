@@ -34,13 +34,45 @@ logger = logging.getLogger(__name__)
 
 def _build_headline(profile: dict) -> str:
     """Generate a headline string from config profile values."""
+    if custom := (profile.get("resume_headline") or profile.get("headline")):
+        return custom.strip()
     role  = profile.get("role_focus", "backend").title()
     exp   = profile.get("experience_years", 2)
     stack = profile.get("tech_stack", [])
 
-    # Take up to 3 primary stack items for the headline
-    stack_short = " · ".join(stack[:3]) if stack else "Python · Node.js · AWS"
+    # Configurable stack count for headline (empty or 0 defaults to 3)
+    try:
+        count = int(profile.get("headline_stack_count") or 0)
+    except (ValueError, TypeError):
+        count = 0
+    count = count if count > 0 else 3
+
+    stack_short = " · ".join(stack[:count]) if stack else "Python · Node.js · AWS"
     return f"{role} Engineer | {exp}+ YOE | {stack_short}"
+
+
+def _find_resume(configured_path: str) -> str | None:
+    """Resolve configured resume path, falling back to newest CV in resumes/ folder."""
+    import glob, re
+    project_root = Path(__file__).parent.parent
+    if configured_path:
+        p = configured_path if os.path.isabs(configured_path) else str(project_root / configured_path)
+        if os.path.isfile(p):
+            return p
+
+    # Fallback: look in resumes/ for the latest non-generated resume
+    resumes_dir = str(project_root / "resumes")
+    if os.path.isdir(resumes_dir):
+        candidates = []
+        for f in glob.glob(os.path.join(resumes_dir, "*")):
+            if f.lower().endswith((".pdf", ".docx")):
+                base = os.path.basename(f)
+                if not re.search(r'_\d{1,2}_[A-Za-z]{3}_\d{4}\.(pdf|docx)$|_\d{4}[-_]\d{2}[-_]\d{2}\.(pdf|docx)$', base, re.I):
+                    candidates.append(f)
+        if candidates:
+            candidates.sort(key=os.path.getmtime, reverse=True)
+            return candidates[0]
+    return None
 
 
 def run_profile_update(cfg: ConfigManager | None = None) -> bool:
@@ -54,19 +86,39 @@ def run_profile_update(cfg: ConfigManager | None = None) -> bool:
     config  = cfg.config
     profile = config.get("profile", {})
 
-    username    = os.getenv("USERNAME", "")
-    password    = os.getenv("PASSWORD", "")
+    session = config.get("session", {})
+    nauk_at = session.get("nauk_at", "")
     resume_path = profile.get("resume_path", "").strip()
 
-    if not username or not password:
-        logger.error("USERNAME or PASSWORD not set in environment")
-        alert_error("Profile updater: credentials missing")
-        return False
-
     try:
-        client = NaukriLoginClient(username, password)
-        client.login()
-        logger.info("Profile updater: logged in as %s", username)
+        if nauk_at:
+            client = NaukriLoginClient.from_browser_cookies(nauk_at, session.get("nauk_rt", ""))
+            logger.info("Profile updater: resumed session from stored cookies")
+        else:
+            username = os.getenv("NAUKRI_USERNAME") or os.getenv("NUSERNAME", "")
+            password = os.getenv("PASSWORD", "")
+
+            if not username or not password:
+                logger.error("NAUKRI_USERNAME (or NUSERNAME) or PASSWORD not set in environment")
+                alert_error("Profile updater: credentials missing")
+                return False
+
+            client = NaukriLoginClient(username, password)
+            client.login()
+            logger.info("Profile updater: logged in as %s", username)
+
+            # Persist fresh session cookies to avoid future login challenges
+            if client.session and client.session.cookies:
+                c_at = client.session.cookies.get("nauk_at")
+                c_rt = client.session.cookies.get("nauk_rt")
+                if c_at:
+                    config.setdefault("session", {})["nauk_at"] = str(c_at)
+                    if c_rt:
+                        config["session"]["nauk_rt"] = str(c_rt)
+                    try:
+                        cfg.save(config)
+                    except Exception:
+                        pass
 
         # Always bump the headline — cheap and effective
         headline = _build_headline(profile)
@@ -74,12 +126,23 @@ def run_profile_update(cfg: ConfigManager | None = None) -> bool:
         logger.info("Headline updated: %s", headline)
 
         # Resume upload (only if path is configured and file exists)
-        if resume_path:
-            if os.path.exists(resume_path):
-                client.update_resume(resume_path)
-                logger.info("Resume uploaded: %s", resume_path)
-            else:
-                logger.warning("Resume path not found: %s", resume_path)
+        resolved_resume_path = _find_resume(resume_path)
+        if resolved_resume_path:
+            import re, shutil
+            from datetime import datetime
+
+            base, ext = os.path.splitext(os.path.basename(resolved_resume_path))
+            # Strip existing date pattern to avoid chaining dates on recurring runs
+            base_clean = re.sub(r'_\d{1,2}_[A-Za-z]{3}_\d{4}$|_\d{4}[-_]\d{2}[-_]\d{2}$', '', base)
+            date_str = datetime.now().strftime("%d_%b_%Y")
+            dated_filename = f"{base_clean}_{date_str}{ext}"
+            dated_path = os.path.join(os.path.dirname(resolved_resume_path), dated_filename)
+
+            shutil.copy2(resolved_resume_path, dated_path)
+            client.update_resume(dated_path)
+            logger.info("Resume uploaded with fresh date: %s (source: %s)", dated_filename, os.path.basename(resolved_resume_path))
+        elif resume_path:
+            logger.warning("Resume file not found: %s and no valid CV in resumes/", resume_path)
 
         tg_cfg = config.get("telegram", {})
         if tg_cfg.get("enabled"):

@@ -24,8 +24,8 @@ from src.utils.vid_generator import generate_vid
 
 load_dotenv(os.path.join(os.path.dirname(__file__), "..", ".env"))
 
-_HAS_CREDS = bool(os.getenv("NAUKRI_USERNAME")) and bool(os.getenv("PASSWORD"))
-live = pytest.mark.skipif(not _HAS_CREDS, reason="NAUKRI_USERNAME / PASSWORD not in .env")
+_HAS_CREDS = bool(os.getenv("NAUKRI_USERNAME") or os.getenv("NUSERNAME")) and bool(os.getenv("PASSWORD"))
+live = pytest.mark.skipif(not _HAS_CREDS, reason="NAUKRI_USERNAME / NUSERNAME / PASSWORD not in .env")
 
 
 # ---------------------------------------------------------------------------
@@ -70,7 +70,7 @@ def test_from_browser_cookies_sets_session_cookies(monkeypatch):
 
 @pytest.fixture(scope="module")
 def client():
-    c = NaukriLoginClient(os.getenv("NAUKRI_USERNAME"), os.getenv("PASSWORD"))
+    c = NaukriLoginClient(os.getenv("NAUKRI_USERNAME") or os.getenv("NUSERNAME"), os.getenv("PASSWORD"))
     c.login()
     return c
 

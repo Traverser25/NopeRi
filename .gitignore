@@ -17,6 +17,8 @@ score_cache.json
 qa_cache.json
 nkparams.db
 nkPool.txt
+resumes/*
+!resumes/.gitkeep
 
 # Python cache
 __pycache__/
