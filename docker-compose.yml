@@ -12,6 +12,10 @@ services:
       - ./score_cache.json:/app/score_cache.json
       - ./qa_cache.json:/app/qa_cache.json
       - ./resumes:/app/resumes
+      - ./cron:/app/cron
+      - ./src:/app/src
+      - ./apply_agent.py:/app/apply_agent.py
+      - ./user_prompt.md:/app/user_prompt.md
     environment:
       - PYTHONUNBUFFERED=1
     networks:
