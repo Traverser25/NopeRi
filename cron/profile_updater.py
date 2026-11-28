@@ -40,8 +40,14 @@ def _build_headline(profile: dict) -> str:
     exp   = profile.get("experience_years", 2)
     stack = profile.get("tech_stack", [])
 
-    # Take up to 3 primary stack items for the headline
-    stack_short = " · ".join(stack[:3]) if stack else "Python · Node.js · AWS"
+    # Configurable stack count for headline (empty or 0 defaults to 3)
+    try:
+        count = int(profile.get("headline_stack_count") or 0)
+    except (ValueError, TypeError):
+        count = 0
+    count = count if count > 0 else 3
+
+    stack_short = " · ".join(stack[:count]) if stack else "Python · Node.js · AWS"
     return f"{role} Engineer | {exp}+ YOE | {stack_short}"
 
 

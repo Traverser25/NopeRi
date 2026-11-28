@@ -30,8 +30,9 @@ DEFAULT_CONFIG: dict = {
         "apply_remote":      True,
         "current_ctc":       "5",
         "expected_ctc":      "7",
-        "notice_days":       30,
-        "resume_path":       "",   # absolute path to PDF; used by cron profile updater
+        "notice_days":          30,
+        "resume_path":          "",   # absolute path to PDF; used by cron profile updater
+        "headline_stack_count": 3,    # number of tech stack items to show in headline (0 or empty = 3)
     },
     "ai": {
         "provider":          "openai",   # "openai" | "openrouter"
