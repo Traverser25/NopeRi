@@ -54,19 +54,39 @@ def run_profile_update(cfg: ConfigManager | None = None) -> bool:
     config  = cfg.config
     profile = config.get("profile", {})
 
-    username    = os.getenv("NAUKRI_USERNAME") or os.getenv("USERNAME", "")
-    password    = os.getenv("PASSWORD", "")
+    session = config.get("session", {})
+    nauk_at = session.get("nauk_at", "")
     resume_path = profile.get("resume_path", "").strip()
 
-    if not username or not password:
-        logger.error("USERNAME or PASSWORD not set in environment")
-        alert_error("Profile updater: credentials missing")
-        return False
-
     try:
-        client = NaukriLoginClient(username, password)
-        client.login()
-        logger.info("Profile updater: logged in as %s", username)
+        if nauk_at:
+            client = NaukriLoginClient.from_browser_cookies(nauk_at, session.get("nauk_rt", ""))
+            logger.info("Profile updater: resumed session from stored cookies")
+        else:
+            username = os.getenv("NAUKRI_USERNAME") or os.getenv("USERNAME", "")
+            password = os.getenv("PASSWORD", "")
+
+            if not username or not password:
+                logger.error("NAUKRI_USERNAME or PASSWORD not set in environment")
+                alert_error("Profile updater: credentials missing")
+                return False
+
+            client = NaukriLoginClient(username, password)
+            client.login()
+            logger.info("Profile updater: logged in as %s", username)
+
+            # Persist fresh session cookies to avoid future login challenges
+            if client.session and client.session.cookies:
+                c_at = client.session.cookies.get("nauk_at")
+                c_rt = client.session.cookies.get("nauk_rt")
+                if c_at:
+                    config.setdefault("session", {})["nauk_at"] = str(c_at)
+                    if c_rt:
+                        config["session"]["nauk_rt"] = str(c_rt)
+                    try:
+                        cfg.save(config)
+                    except Exception:
+                        pass
 
         # Always bump the headline — cheap and effective
         headline = _build_headline(profile)

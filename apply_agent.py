@@ -413,6 +413,17 @@ def run_agent(cfg: ConfigManager, db: AppliedJobsDB) -> dict:
         client = NaukriLoginClient(username, password)
         client.login()
         print(f"  {Fore.GREEN}Logged in as {Fore.YELLOW}{username}{Style.RESET_ALL}")
+        if client.session and client.session.cookies:
+            c_at = client.session.cookies.get("nauk_at")
+            c_rt = client.session.cookies.get("nauk_rt")
+            if c_at:
+                config.setdefault("session", {})["nauk_at"] = str(c_at)
+                if c_rt:
+                    config["session"]["nauk_rt"] = str(c_rt)
+                try:
+                    cfg.save(config)
+                except Exception:
+                    pass
 
     if tg_on and alerts.get("on_scheduler_start", True):
         alert_run_started("manual")
